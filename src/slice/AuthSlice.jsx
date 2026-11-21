@@ -46,7 +46,11 @@ const authSlice=createSlice({
   name:'auth',
   initialState,
   reducers:{
-    setUser:(state,action)=>state.user=action.payload,
+   setUser: (state, action) => {
+  state.user = action.payload;
+  state.isAuthenticated = true;
+  state.isAdmin = action.payload.isAdmin || false;
+},
   resetAuthSlice:()=>initialState
   },
   extraReducers:(builder)=>{
@@ -77,16 +81,13 @@ const authSlice=createSlice({
       console.log(state.user,'usersss')
       state.error = null;
 
-      if (action.payload.role === "admin") {
-        state.isAdmin = true;
-        state.isAuthenticated = false;
-      } else if (action.payload.role === "user") {
-        state.isAdmin = false;
-        state.isAuthenticated = true;
-      } else {
-        state.isAdmin = false;
-        state.isAuthenticated = false;
-      }
+   if (action.payload.isAdmin) {
+  state.isAdmin = true;
+  state.isAuthenticated = true;
+} else {
+  state.isAdmin = false;
+  state.isAuthenticated = true;
+}
     })
     .addCase(fetchUserDetails.rejected, (state, action) => {
       state.loading = false;
@@ -98,6 +99,6 @@ const authSlice=createSlice({
 },
 });
 
-export const { resetAuthState,setUser } = authSlice.actions;
+export const { resetAuthSlice, setUser } = authSlice.actions;
 
 export default authSlice.reducer;

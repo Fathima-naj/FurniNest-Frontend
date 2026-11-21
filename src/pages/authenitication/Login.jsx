@@ -8,6 +8,7 @@ import { useDispatch } from 'react-redux';
 import { setLogged } from '../../slice/AdminSlice';
 import axiosInstance from '../../api/axiosinstance';
 import { setUser } from '../../slice/AuthSlice';
+import { GoogleLogin } from "@react-oauth/google";
 
 const initialValues = {
   password: '',
@@ -26,7 +27,7 @@ function Login() {
   const onSubmit = async (values, { resetForm }) => {
     try {
       const response = await axiosInstance.post(`/users/login`, values);
-      setUser(response.data.user.name);
+     dispatch(setUser(response.data.user));
 
       const userRole = response.data.user.isAdmin ? 'admin' : 'user';
       navigate(userRole === 'admin' ? '/admin' : '/');
@@ -37,6 +38,35 @@ function Login() {
       toast.error('Something went wrong');
     }
   };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+  try {
+    const response = await axiosInstance.post(
+      "/users/google",
+      {
+        credential: credentialResponse.credential,
+      }
+    );
+
+    dispatch(setUser(response.data.user));
+
+    const userRole = response.data.user.isAdmin
+      ? "admin"
+      : "user";
+
+    toast.success(response.data.message);
+
+    navigate(userRole === "admin" ? "/admin" : "/");
+
+  } catch (error) {
+    console.error("Google Login Error:", error);
+
+    toast.error(
+      error.response?.data?.message ||
+      "Google authentication failed"
+    );
+  }
+};
 
   return (
     <div
@@ -77,6 +107,24 @@ function Login() {
             >
               Login
             </button>
+            <div className="flex items-center gap-3 my-5">
+  <div className="flex-1 border-t border-gray-400"></div>
+  <span className="text-sm text-gray-300">OR</span>
+  <div className="flex-1 border-t border-gray-400"></div>
+</div>
+
+<div className="flex justify-center">
+  <GoogleLogin
+    onSuccess={handleGoogleSuccess}
+    onError={() => {
+      toast.error("Google login failed");
+    }}
+    theme="outline"
+    shape="rectangular"
+    text="continue_with"
+    width="300"
+  />
+</div>
 
             {/* Register Link */}
             <p className="mt-6 text-center text-sm text-gray-300">

@@ -157,7 +157,7 @@ const handleLogOut=async()=>{
           onClick={() => handleNavigation('/login')}
           />
 
-          <p>{user?.username||'Guest'}</p>
+          <p>{user?.name||'Guest'}</p>
         
       </div>
    
