@@ -1,104 +1,99 @@
-import { createSlice,createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
+
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../api/axiosinstance";
 
-const initialState={
-    isAuthenticated:false,
-    loading:false,
-    isAdmin:false,
-    error:null,
-    user:null,
-}
+const initialState = {
+  user: null,
+  isAuthenticated: false,
+  isAdmin: false,
+  loading: false,
+  error: null,
+};
 
-export const logoutUser = createAsyncThunk(
-  "auth/logoutUser",
+// Fetch currently logged-in user
+export const fetchUserDetails = createAsyncThunk(
+  "auth/fetchUserDetails",
   async (_, { rejectWithValue }) => {
     try {
-      await axiosInstance.post('/users/logout');
-      return;
+      const response = await axiosInstance.get("/users/me");
+      return response.data.user;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || "Error in logout"
+        error.response?.data?.message || "Unable to fetch user details"
       );
     }
   }
 );
 
-export const fetchUserDetails=createAsyncThunk(
-    'user/fetchUserDetails',
-    async(__,{rejectWithValue})=>{
-        try {
-            const response = await axiosInstance.get(`/users/me`);
-            console.log(response.data.user);
-            return response.data.user;
-          } catch (error) {
-            if (error.response?.status === 401) {
-              return rejectWithValue("Please login with your credentials");
-            }
-            return rejectWithValue(
-              error.response?.data?.message || "Error in logined person"
-            );
-          }
+// Logout
+export const logoutUser = createAsyncThunk(
+  "auth/logoutUser",
+  async (_, { rejectWithValue }) => {
+    try {
+      await axiosInstance.post("/users/logout");
+      return true;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Logout failed"
+      );
     }
-)
+  }
+);
 
-const authSlice=createSlice({
-  name:'auth',
+const authSlice = createSlice({
+  name: "auth",
   initialState,
-  reducers:{
-   setUser: (state, action) => {
-  state.user = action.payload;
-  state.isAuthenticated = true;
-  state.isAdmin = action.payload.isAdmin || false;
-},
-  resetAuthSlice:()=>initialState
-  },
-  extraReducers:(builder)=>{
-    builder
-    .addCase(logoutUser.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-    })
-    .addCase(logoutUser.fulfilled, (state) => {
-      state.loading = false;
-      state.user = null;
-      state.isAuthenticated = false;
-      
-      state.isAdmin = false;
-      state.error = null;
-    })
-    .addCase(logoutUser.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
-    })
-    .addCase(fetchUserDetails.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-    })
-    .addCase(fetchUserDetails.fulfilled, (state, action) => {
-      state.loading = false;
-      state.user = action.payload;
-      console.log(state.user,'usersss')
-      state.error = null;
 
-   if (action.payload.isAdmin) {
-  state.isAdmin = true;
-  state.isAuthenticated = true;
-} else {
-  state.isAdmin = false;
-  state.isAuthenticated = true;
-}
-    })
-    .addCase(fetchUserDetails.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
-      state.user = null;
-      state.isAuthenticated = false;
-      state.isAdmin = false;
-    })
-},
+  reducers: {
+    setUser: (state, action) => {
+      state.user = action.payload;
+      state.isAuthenticated = Boolean(action.payload);
+      state.isAdmin = Boolean(action.payload?.isAdmin);
+      state.error = null;
+    },
+
+    resetAuthSlice: () => initialState,
+  },
+
+  extraReducers: (builder) => {
+    builder
+      // Fetch user
+      .addCase(fetchUserDetails.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+
+      .addCase(fetchUserDetails.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+        state.isAuthenticated = Boolean(action.payload);
+        state.isAdmin = Boolean(action.payload?.isAdmin);
+        state.error = null;
+      })
+
+      .addCase(fetchUserDetails.rejected, (state, action) => {
+        state.loading = false;
+        state.user = null;
+        state.isAuthenticated = false;
+        state.isAdmin = false;
+        state.error = action.payload;
+      })
+
+      // Logout
+      .addCase(logoutUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+
+      .addCase(logoutUser.fulfilled, () => initialState)
+
+      .addCase(logoutUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+  },
 });
 
-export const { resetAuthSlice, setUser } = authSlice.actions;
+export const { setUser, resetAuthSlice } = authSlice.actions;
 
 export default authSlice.reducer;

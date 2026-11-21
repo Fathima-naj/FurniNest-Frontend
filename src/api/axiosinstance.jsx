@@ -1,11 +1,10 @@
 
-
 import axios from "axios";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  withCredentials: true, 
-  timeout: 5000,
+  withCredentials: true,
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -14,60 +13,78 @@ const axiosInstance = axios.create({
 let isRefreshing = false;
 let failedQueue = [];
 
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
+const processQueue = (error) => {
+  failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
-      prom.reject(error);
+      reject(error);
     } else {
-      prom.resolve(token);
+      resolve();
     }
   });
+
   failedQueue = [];
 };
 
+const publicAuthRoutes = [
+  "/users/login",
+  "/users/register",
+  "/users/google",
+  "/users/refreshToken",
+  "/users/refreshtoken",
+  "/users/logout",
+];
+
 axiosInstance.interceptors.response.use(
-  (response) => response, 
+  (response) => response,
+
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        
-        const refreshResponse = await axiosInstance.post("/users/refreshtoken");
-        const newAccessToken = refreshResponse.data.accessToken;
-
-        console.log("New Access Token:", newAccessToken);
-
-      
-        // axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${newAccessToken}`;
-
-        // originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
-
-        processQueue(null, newAccessToken);
-        isRefreshing = false;
-
-        return axiosInstance(originalRequest);
-      } catch (refreshError) {
-        isRefreshing = false;
-        processQueue(refreshError, null);
-
-        if (refreshError.response?.status === 401) {
-          window.location.href = "/login"; 
-        }
-        return Promise.reject(refreshError);
-      }
+    if (!originalRequest || error.response?.status !== 401) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    const requestUrl = originalRequest.url || "";
+
+    // Never refresh public authentication requests
+    const isPublicAuthRequest = publicAuthRoutes.some((route) =>
+      requestUrl.toLowerCase().includes(route.toLowerCase())
+    );
+
+    if (isPublicAuthRequest || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    // Queue other requests while one refresh is running
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      }).then(() => axiosInstance(originalRequest));
+    }
+
+    isRefreshing = true;
+
+    try {
+      // Backend sets the new access token as an HTTP-only cookie
+      await axiosInstance.post("/users/refreshToken");
+
+      processQueue(null);
+
+      return axiosInstance(originalRequest);
+    } catch (refreshError) {
+      processQueue(refreshError);
+
+      // Do not redirect for every failed background request
+      if (window.location.pathname !== "/login") {
+        window.location.assign("/login");
+      }
+
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
   }
 );
 
