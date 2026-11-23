@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import axiosInstance from '../../api/axiosinstance';
@@ -44,6 +44,9 @@ function Register() {
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [resendTimer, setResendTimer] = useState(60);
+const [isResending, setIsResending] = useState(false);
+
   // Registration
   const onSubmit = async (values, { resetForm }) => {
     try {
@@ -57,7 +60,8 @@ function Register() {
       );
 
       setRegisteredEmail(values.email.trim().toLowerCase());
-      setIsOtpStage(true);
+setResendTimer(60);
+setIsOtpStage(true);
 
       resetForm();
 
@@ -109,6 +113,35 @@ function Register() {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+  if (!isOtpStage || resendTimer <= 0) return;
+
+  const timer = setInterval(() => {
+    setResendTimer((prev) => prev - 1);
+  }, 1000);
+
+  return () => clearInterval(timer);
+}, [isOtpStage, resendTimer]);
+
+const handleResendOtp = async () => {
+  try {
+    setIsResending(true);
+
+    const response = await axiosInstance.post('/users/resend-otp', {
+      email: registeredEmail,
+    });
+
+    toast.success(response.data.message);
+    setResendTimer(60);
+  } catch (error) {
+    toast.error(
+      error.response?.data?.message || 'Unable to resend OTP'
+    );
+  } finally {
+    setIsResending(false);
+  }
+};
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-6">
@@ -237,9 +270,27 @@ function Register() {
                 />
               </div>
 
+              <div className="mt-4 text-center">
+  {resendTimer > 0 ? (
+    <p className="text-sm text-gray-500">
+      Resend OTP in <span className="font-semibold">{resendTimer}s</span>
+    </p>
+  ) : (
+    <button
+      type="button"
+      onClick={handleResendOtp}
+      disabled={isResending}
+      className="text-sm font-semibold text-[#A45D5D] hover:underline disabled:opacity-50"
+    >
+      {isResending ? 'Sending...' : 'Resend OTP'}
+    </button>
+  )}
+</div>
+
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isResending}
+
                 className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50"
               >
                 {isSubmitting ? 'Verifying...' : 'Verify Email'}
