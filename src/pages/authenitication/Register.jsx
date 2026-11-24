@@ -21,11 +21,7 @@ const validationSchema = Yup.object({
     .required('Email is required!'),
   password: Yup.string()
     .required('Password is required!')
-    .min(8, 'Must be at least 8 characters')
-    .matches(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .matches(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .matches(/[0-9]/, 'Password must contain at least one number')
-    .matches(/[@$!%*?&#]/, 'Password must contain at least one special character'),
+    .min(6, 'Must be at least 6 characters'),
   confirmPassword: Yup.string()
     .oneOf([Yup.ref('password')], 'Password must match')
     .required('Confirm your password'),
@@ -245,67 +241,110 @@ const handleResendOtp = async () => {
         ) : (
 
           // OTP Form
-          <Formik
-            initialValues={{ otp: '' }}
-            validationSchema={otpSchema}
-            onSubmit={verifyOtp}
+
+<Formik
+  initialValues={{ otp: '' }}
+  validationSchema={otpSchema}
+  onSubmit={verifyOtp}
+>
+  {({ values, setFieldValue, isSubmitting }) => (
+    <Form noValidate>
+      <div className="mb-5">
+        <div className="flex justify-center gap-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <input
+              key={index}
+              id={`otp-${index}`}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              autoComplete={index === 0 ? "one-time-code" : "off"}
+              value={(values.otp || '')[index] || ''}
+              onChange={(e) => {
+                const digit = e.target.value.replace(/\D/g, '');
+
+             const otp = (values.otp || '').split('');
+                otp[index] = digit.slice(-1);
+
+                setFieldValue('otp', otp.join(''));
+
+                if (digit && index < 5) {
+                  document.getElementById(`otp-${index + 1}`)?.focus();
+                }
+              }}
+              onKeyDown={(e) => {
+                if (
+                  e.key === 'Backspace' &&
+                  !values.otp[index] &&
+                  index > 0
+                ) {
+                  document.getElementById(`otp-${index - 1}`)?.focus();
+                }
+              }}
+              onPaste={(e) => {
+                e.preventDefault();
+
+                const pasted = e.clipboardData
+                  .getData('text')
+                  .replace(/\D/g, '')
+                  .slice(0, 6);
+
+                setFieldValue('otp', pasted);
+
+                document.getElementById(
+                  `otp-${Math.min(pasted.length, 5)}`
+                )?.focus();
+              }}
+              className="w-11 h-12 sm:w-12 sm:h-14 border border-gray-300 rounded-lg text-center text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#A45D5D] focus:border-[#A45D5D]"
+            />
+          ))}
+        </div>
+
+        <ErrorMessage
+          name="otp"
+          component="div"
+          className="text-red-500 text-sm mt-2 text-center"
+        />
+      </div>
+
+      <div className="mt-4 mb-4 text-center">
+        {resendTimer > 0 ? (
+          <p className="text-sm text-gray-500">
+            Resend OTP in{' '}
+            <span className="font-semibold">{resendTimer}s</span>
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={handleResendOtp}
+            disabled={isResending}
+            className="text-sm font-semibold text-[#A45D5D] hover:underline disabled:opacity-50"
           >
-            <Form noValidate>
+            {isResending ? 'Sending...' : 'Resend OTP'}
+          </button>
+        )}
+      </div>
 
-              <div className="mb-5">
-                <Field
-                  type="text"
-                  name="otp"
-                  maxLength="6"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  placeholder="Enter 6-digit OTP"
-                  className="w-full px-3 py-3 border rounded-lg text-center text-xl tracking-widest"
-                />
+      <button
+        type="submit"
+        disabled={isSubmitting || isResending}
+        className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+      >
+        {isSubmitting ? 'Verifying...' : 'Verify Email'}
+      </button>
 
-                <ErrorMessage
-                  name="otp"
-                  component="div"
-                  className="text-red-500 text-sm mt-1 text-center"
-                />
-              </div>
-
-              <div className="mt-4 text-center">
-  {resendTimer > 0 ? (
-    <p className="text-sm text-gray-500">
-      Resend OTP in <span className="font-semibold">{resendTimer}s</span>
-    </p>
-  ) : (
-    <button
-      type="button"
-      onClick={handleResendOtp}
-      disabled={isResending}
-      className="text-sm font-semibold text-[#A45D5D] hover:underline disabled:opacity-50"
-    >
-      {isResending ? 'Sending...' : 'Resend OTP'}
-    </button>
+      <button
+        type="button"
+        onClick={() => setIsOtpStage(false)}
+        className="w-full mt-3 text-gray-600 hover:text-blue-500"
+      >
+        Back to Registration
+      </button>
+    </Form>
   )}
-</div>
+</Formik>
 
-              <button
-                type="submit"
-                disabled={isSubmitting || isResending}
 
-                className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50"
-              >
-                {isSubmitting ? 'Verifying...' : 'Verify Email'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsOtpStage(false)}
-                className="w-full mt-3 text-gray-600 hover:text-blue-500"
-              >
-                Back to Registration
-              </button>
-
-            </Form>
-          </Formik>
 
         )}
 
