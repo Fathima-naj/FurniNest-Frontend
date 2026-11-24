@@ -13,6 +13,7 @@ import Payment from '../pages/Payment'
 import Order from '../pages/order'
 import Whishlist from '../pages/Whishlist'
 import About from '../pages/Home/About'
+import ForgotPassword from '../pages/authenitication/ForgotPassword'
 
 
 
@@ -36,6 +37,7 @@ function Routing() {
             <Route path='/order' element={<Order/>}/>
             <Route path='/whishlist' element={<Whishlist/>}/>
             <Route path='/about' element={<About/>}/>
+            <Route path='/forgot-password' element={<ForgotPassword/>}/>
             </Routes>
              
           
