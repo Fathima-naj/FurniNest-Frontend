@@ -14,7 +14,7 @@ import Order from '../pages/order'
 import Whishlist from '../pages/Whishlist'
 import About from '../pages/Home/About'
 import ForgotPassword from '../pages/authenitication/ForgotPassword'
-
+import Profile from '../pages/Profile'
 
 
 
@@ -38,6 +38,7 @@ function Routing() {
             <Route path='/whishlist' element={<Whishlist/>}/>
             <Route path='/about' element={<About/>}/>
             <Route path='/forgot-password' element={<ForgotPassword/>}/>
+            <Route path='/profile' element={<Profile/>}/>
             </Routes>
              
           
